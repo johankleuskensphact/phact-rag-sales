@@ -20,7 +20,6 @@ from load_azd_env import load_azd_env
 
 logger = logging.getLogger("scripts")
 
-
 class ManageAcl:
     """
     Manually enable document level access control on a search index and manually set access control values using the [manageacl.ps1](./scripts/manageacl.ps1) script.
@@ -83,6 +82,8 @@ class ManageAcl:
                 await self.add_acl(search_client)
             elif self.acl_action == "update_storage_urls":
                 await self.update_storage_urls(search_client)
+            elif self.acl_action == "check_chunks":
+                await self.check_chunks(search_client)
             else:
                 raise Exception(f"Unknown action {self.acl_action}")
 
@@ -203,6 +204,23 @@ class ManageAcl:
         else:
             logger.info("Not updating any search documents")
 
+    async def check_chunks(self, search_client: SearchClient):
+        filter = f"storageUrl eq '{self.url}'"
+        #filter = None
+        documents = await search_client.search("", filter=filter, select=["id", "content"])
+
+        found_documents = []
+        async for document in documents:
+            found_documents.append(document)
+
+        #logger.info("Found %d chunks for document with storageUrl %s", len(found_documents), self.url)
+        if (len(found_documents) == 0):
+            logger.error("No documents found with storageUrl %s", self.url)
+        #else:
+        #    for doc in found_documents:
+        #        print(f"storageUrl: {doc['storageUrl']}")  # Print first 100 characters of content        
+        #        print(f"Chunk ID: {doc['id']}, Content: {doc['content'][:100]}...")  # Print first 100 characters of content        
+
 
 async def main(args: Any):
     load_azd_env()
@@ -243,7 +261,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--acl-action",
         required=False,
-        choices=["remove", "add", "view", "remove_all", "enable_acls", "update_storage_urls"],
+        choices=["remove", "add", "view", "remove_all", "enable_acls", "update_storage_urls", "check_chunks"],
         help="Optional. Whether to remove or add the ACL to the document, or enable acls on the index",
     )
     parser.add_argument("--acl", required=False, default=None, help="Optional. Value of ACL to add or remove.")
